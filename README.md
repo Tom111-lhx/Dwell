@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/dwell-masthead-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/dwell-masthead-light.svg">
+    <img src="assets/dwell-masthead-light.svg" width="100%" alt="DWELL — an original wordmark with a continuous path through abstract latent states.">
+  </picture>
+</p>
+
 <div align="center">
 
 # Dwell: Vision-Language Agents Can Learn in Their Own Latent Worlds
@@ -9,13 +17,13 @@
 <sup>2</sup>National University of Singapore · <sup>3</sup>University of Southern California  
 <sup>†</sup>Corresponding authors
 
-[Code](https://github.com/Tom111-lhx/Dwell) · [Getting Started](#getting-started) · [Data](docs/data.md) · [Training Guide](docs/reproduction.md) · [Citation](#citation)
+[**Code**](https://github.com/Tom111-lhx/Dwell) &nbsp; · &nbsp; [**Getting Started**](#getting-started) &nbsp; · &nbsp; [**Data**](docs/data.md) &nbsp; · &nbsp; [**Training Guide**](docs/reproduction.md) &nbsp; · &nbsp; [**Citation**](#citation)
 
 **Learning to act in a VLM’s own latent world.**
 
 </div>
 
-DWELL equips a pretrained vision-language model with recurrent latent dynamics and improves its policy through imagined experience, without reconstructing future observations. Predicted states are consumed directly by the policy: the representation used to anticipate an action’s outcome becomes the state on which the agent continues to act and learn.
+> DWELL equips a pretrained vision-language model with recurrent latent dynamics and improves its policy through imagined experience, without reconstructing future observations. Predicted states are consumed directly by the policy: the representation used to anticipate an action’s outcome becomes the state on which the agent continues to act and learn.
 
 <p align="center">
   <img src="assets/method.png" width="100%" alt="DWELL overview: a Qwen VLM predicts action-conditioned latent states, grounds them with observed outcomes and a frozen V-JEPA 2 teacher, and alternates real interaction with imagined policy learning.">
@@ -26,6 +34,48 @@ DWELL equips a pretrained vision-language model with recurrent latent dynamics a
 - **Predict in latent space.** Recurrent posterior updates incorporate observations; action-conditioned priors predict future latent states.
 - **Learn from imagined experience.** World modeling and policy learning use separate LoRA adapters on a frozen VLM backbone, with a common latent interface for transitions, rewards, and decisions.
 - **Ground predictions in experience.** Real transitions supervise dynamics and task feedback; online world-model refresh supports continued learning in the environments using the alternating protocol.
+
+## How DWELL works
+
+1. **Observe.** Encode the current image and update a recurrent posterior state that combines observations with history.
+2. **Predict.** Starting from a posterior, recursively apply the action-conditioned prior without future observations.
+3. **Evaluate and learn.** Predict task feedback on imagined states and update the actor and critic using PPO.
+4. **Refresh.** Collect new real experience and refine the world model in the alternating training protocol.
+
+The world model combines dynamics prediction, visual representation grounding, reward learning, and anti-collapse regularization. A frozen V-JEPA 2 encoder supplies representation targets. The critic is warmed up before imagined policy optimization.
+
+Here, “latent planning” refers to learning from imagined trajectories. The framework does not require decoding future images or searching over image sequences at each real decision. Prior and posterior states are deterministic representations.
+
+See the [training guide](docs/reproduction.md) for code entry points and the existing [implementation notes](pipeline.md) for additional detail. Environment-specific protocols matter: the paper’s EB-ALFRED setting uses a fixed world model and behavior-cloning support.
+
+## Selected results
+
+Success rates below are reported in the manuscript for methods using Qwen2.5-VL-3B. Values are mean ± standard deviation over three training seeds. This compact table shows the two grid environments; it is not an aggregate over all five tasks.
+
+| Method | Sokoban | FrozenLake |
+| --- | ---: | ---: |
+| PPO | 0.29 ± 0.125 | 0.22 ± 0.036 |
+| GRPO | 0.21 ± 0.040 | 0.19 ± 0.052 |
+| LeWorldModel (adapted) | 0.44 ± 0.021 | 0.29 ± 0.061 |
+| **DWELL** | **0.53 ± 0.012** | **0.51 ± 0.021** |
+
+<p align="center">
+  <img src="assets/learning.png" width="100%" alt="Manuscript learning curves comparing DWELL with model-based and model-free baselines on Sokoban and FrozenLake.">
+</p>
+
+The training-step axis counts accepted actor updates for DWELL in these environments. It should not be interpreted as a count of real environment transitions.
+
+### Computation
+
+<p align="center">
+  <img src="assets/compute.png" width="100%" alt="Manuscript comparison of online-training GPU-hours for DWELL, LeWorldModel, AdaWorld, GRPO, and PPO across four environments.">
+</p>
+
+Under the reported environment-specific schedules, DWELL uses approximately **38–58% fewer online-training GPU-hours than AdaWorld**. The accounting covers online-training computation, including world-model updates, imagination, and actor–critic optimization. LeWorldModel remains less expensive. These figures are manuscript results, not fresh measurements of this checkout.
+
+<br>
+
+---
 
 ## Release status
 
@@ -75,44 +125,6 @@ Expected outputs are `data/sokoban_example/raw/manifest.jsonl` and per-episode `
 
 These commands have been checked against the source interfaces; a clean Linux/CUDA execution is still pending.
 
-## How DWELL works
-
-1. **Observe.** Encode the current image and update a recurrent posterior state that combines observations with history.
-2. **Predict.** Starting from a posterior, recursively apply the action-conditioned prior without future observations.
-3. **Evaluate and learn.** Predict task feedback on imagined states and update the actor and critic using PPO.
-4. **Refresh.** Collect new real experience and refine the world model in the alternating training protocol.
-
-The world model combines dynamics prediction, visual representation grounding, reward learning, and anti-collapse regularization. A frozen V-JEPA 2 encoder supplies representation targets. The critic is warmed up before imagined policy optimization.
-
-Here, “latent planning” refers to learning from imagined trajectories. The framework does not require decoding future images or searching over image sequences at each real decision. Prior and posterior states are deterministic representations.
-
-See the [training guide](docs/reproduction.md) for code entry points and the existing [implementation notes](pipeline.md) for additional detail. Environment-specific protocols matter: the paper’s EB-ALFRED setting uses a fixed world model and behavior-cloning support.
-
-## Selected results
-
-Success rates below are reported in the manuscript for methods using Qwen2.5-VL-3B. Values are mean ± standard deviation over three training seeds. This compact table shows the two grid environments; it is not an aggregate over all five tasks.
-
-| Method | Sokoban | FrozenLake |
-| --- | ---: | ---: |
-| PPO | 0.29 ± 0.125 | 0.22 ± 0.036 |
-| GRPO | 0.21 ± 0.040 | 0.19 ± 0.052 |
-| LeWorldModel (adapted) | 0.44 ± 0.021 | 0.29 ± 0.061 |
-| **DWELL** | **0.53 ± 0.012** | **0.51 ± 0.021** |
-
-<p align="center">
-  <img src="assets/learning.png" width="100%" alt="Manuscript learning curves comparing DWELL with model-based and model-free baselines on Sokoban and FrozenLake.">
-</p>
-
-The training-step axis counts accepted actor updates for DWELL in these environments. It should not be interpreted as a count of real environment transitions.
-
-### Computation
-
-<p align="center">
-  <img src="assets/compute.png" width="100%" alt="Manuscript comparison of online-training GPU-hours for DWELL, LeWorldModel, AdaWorld, GRPO, and PPO across four environments.">
-</p>
-
-Under the reported environment-specific schedules, DWELL uses approximately **38–58% fewer online-training GPU-hours than AdaWorld**. The accounting covers online-training computation, including world-model updates, imagination, and actor–critic optimization. LeWorldModel remains less expensive. These figures are manuscript results, not fresh measurements of this checkout.
-
 ## Training and reproduction
 
 The primary entry points are [`scripts/sokoban/run_sokoban_full_training.sh`](scripts/sokoban/run_sokoban_full_training.sh) and [`scripts/frozenlake/run_frozenlake_full_training.sh`](scripts/frozenlake/run_frozenlake_full_training.sh). Both accept `PHASE=data|base_wm|prior|wm|reward|critic|ppo|rl|all` and call shared components under `scripts/train/`.
@@ -157,6 +169,10 @@ scripts/
 docs/            # Setup, data, and reproduction documentation
 assets/          # Paper figures used in this README
 ```
+
+<br>
+
+---
 
 ## Citation
 
