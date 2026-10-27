@@ -195,4 +195,6 @@ DWELL uses Qwen2.5-VL as its pretrained VLM backbone and V-JEPA 2 for visual rep
 
 ## License
 
-License information is being finalized for this release. The code and dataset license texts will be linked here once included. Pretrained models and third-party resources retain their own terms.
+The code in this repository is licensed under the [Apache License 2.0](LICENSE).
+
+Pretrained models and third-party resources remain subject to their respective licenses. Dataset licensing information will be provided with the data release.
