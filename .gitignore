@@ -1,0 +1,21 @@
+# macOS metadata must never be committed.
+.DS_Store
+**/.DS_Store
+
+# Python and test caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments and training artifacts.
+.venv/
+data/
+checkpoints/
+wandb/
+
+# Local editor and OS files.
+.idea/
+.vscode/
+*.swp
